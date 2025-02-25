@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadlands Character Sheet</title>
+  <style>
+    :root {
+      --parchment-color: #f5e8d0;
+      --text-color: #8b2e00;
+      --title-color: #8b0000;
+      --border-color: #8b4513;
+      --button-color: #8b2e00;
+      --button-text: #f5e8d0;
+      --input-bg: #f9f3e3;
+      --selected-dice: #8b2e00;
+    }
+    
+    body {
+      font-family: 'Georgia', serif;
+      background-color: #2d2010;
+      color: var(--text-color);
+      padding: 20px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .character-sheet {
+      background-color: var(--parchment-color);
+      width: 100%;
+      max-width: 850px;
+      padding: 20px;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.7);
+      border-radius: 0px;
+      background-image: linear-gradient(to bottom, #f5e8d0, #e8d5b9);
+      margin-bottom: 20px;
+    }
+    
+    .title-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .title-section h1 {
+      font-family: 'Georgia', serif;
+      color: var(--title-color);
+      font-size: 2.5rem;
+      margin: 0;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    
+    .title-section h3 {
+      margin-top: 5px;
+      color: var(--text-color);
+    }
+    
+    .section {
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      padding: 10px;
+    }
+    
+    .section-title {
+      font-weight: bold;
+      color: var(--title-color);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+    }
+    
+    .basic-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .basic-info > div {
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .basic-info label {
+      margin-right: 5px;
+    }
+    
+    .attribute-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .attribute-name {
+      width: 120px;
+      font-weight: bold;
+      color: var(--text-color);
+    }
+    
+    .dice-row {
+      display: flex;
+    }
+    
+    .dice-button {
+      width: 60px;
+      height: 30px;
+      text-align: center;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      margin-right: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
+    .selected {
+      background-color: var(--selected-dice);
+      color: white;
+    }
+    
+    .derived-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    
+    .derived-stat {
+      border: 1px solid var(--border-color);
+      width: 32%;
+      text-align: center;
+      padding: 10px 0;
+    }
+    
+    .derived-stat input {
+      width: 50px;
+      margin-top: 5px;
+      text-align: center;
+    }
+    
+    .main-content {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    
+    .left-column {
+      width: 60%;
+      margin-right: 20px;
+    }
+    
+    .right-column {
+      width: 40%;
+    }
+    
+    .skill-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .skill-name {
+      width: 120px;
+    }
+    
+    .skill-dice {
+      display: flex;
+    }
+    
+    .gear-list, .hindrance-list, .edge-list {
+      min-height: 100px;
+    }
+    
+    .gear-item, .hindrance-item, .edge-item {
+      margin-bottom: 5px;
+    }
+    
+    .power-row {
+  display: grid;
+  /* Adjust column widths as you like: */
+  grid-template-columns: 1fr 50px 60px 60px 1fr;
+  gap: 5px;
+}
+
+.power-row input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+    
+    .power-header {
+      display: grid;
+      grid-template-columns: 1fr 60px 80px 80px 1fr;
+      gap: 5px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .weapon-header, .weapon-row {
+  display: grid;
+  /* Match these columns to your placeholders: */
+  grid-template-columns: 
+    1fr    /* WEAPON */
+    80px   /* RANGE */
+    100px  /* DAMAGE */
+    40px   /* AP */
+    60px   /* ROF */
+    60px   /* WT */
+    1fr;   /* NOTES */
+
+  gap: 5px;
+  align-items: center;
+}
+    
+    input[type="text"], input[type="number"] {
+      padding: 5px;
+      border: 1px solid var(--border-color);
+      background-color: var(--input-bg);
+    }
+    
+    .wound-fatigue {
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .wounds, .fatigue {
+      width: 48%;
+      border: 1px solid var(--border-color);
+      padding: 10px;
+    }
+    
+    .track {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+    
+    .add-button {
+      background-color: var(--button-color);
+      color: var(--button-text);
+      border: none;
+      padding: 8px 15px;
+      margin-top: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .save-load {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .save-load button {
+      background-color: var(--button-color);
+      color: var(--button-text);
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    
+    textarea#characterData {
+      width: 100%;
+      max-width: 850px;
+      height: 150px;
+      margin-top: 10px;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="character-sheet">
+    <div class="title-section">
+      <h1>DEADLANDS</h1>
+      <h3>Savage Worlds Adventure Edition</h3>
+    </div>
+    
+    <!-- Basic Info Section -->
+    <div class="basic-info">
+      <div>
+        <label for="name">Name:</label>
+        <input type="text" id="name" style="width: 150px;">
+      </div>
+      <div>
+        <label for="nickname">Nickname:</label>
+        <input type="text" id="nickname" style="width: 150px;">
+      </div>
+      <div>
+        <label for="bennies">Bennies:</label>
+        <input type="number" id="bennies" value="0" style="width: 50px;">
+      </div>
+      <div>
+        <label for="conviction">Conviction:</label>
+        <input type="number" id="conviction" value="0" style="width: 50px;">
+      </div>
+    </div>
+    
+    <!-- Attributes Section -->
+    <div class="section">
+      <div class="section-title">ATTRIBUTES</div>
+      
+      <div class="attribute-row">
+        <div class="attribute-name">AGILITY</div>
+        <div class="dice-row" id="agility-dice">
+          <div class="dice-button selected" data-attribute="agility" data-dice="d4">d4</div>
+          <div class="dice-button" data-attribute="agility" data-dice="d6">d6</div>
+          <div class="dice-button" data-attribute="agility" data-dice="d8">d8</div>
+          <div class="dice-button" data-attribute="agility" data-dice="d10">d10</div>
+          <div class="dice-button" data-attribute="agility" data-dice="d12">d12</div>
+        </div>
+      </div>
+      
+      <div class="attribute-row">
+        <div class="attribute-name">SMARTS</div>
+        <div class="dice-row" id="smarts-dice">
+          <div class="dice-button selected" data-attribute="smarts" data-dice="d4">d4</div>
+          <div class="dice-button" data-attribute="smarts" data-dice="d6">d6</div>
+          <div class="dice-button" data-attribute="smarts" data-dice="d8">d8</div>
+          <div class="dice-button" data-attribute="smarts" data-dice="d10">d10</div>
+          <div class="dice-button" data-attribute="smarts" data-dice="d12">d12</div>
+        </div>
+      </div>
+      
+      <div class="attribute-row">
+        <div class="attribute-name">SPIRIT</div>
+        <div class="dice-row" id="spirit-dice">
+          <div class="dice-button selected" data-attribute="spirit" data-dice="d4">d4</div>
+          <div class="dice-button" data-attribute="spirit" data-dice="d6">d6</div>
+          <div class="dice-button" data-attribute="spirit" data-dice="d8">d8</div>
+          <div class="dice-button" data-attribute="spirit" data-dice="d10">d10</div>
+          <div class="dice-button" data-attribute="spirit" data-dice="d12">d12</div>
+        </div>
+      </div>
+      
+      <div class="attribute-row">
+        <div class="attribute-name">STRENGTH</div>
+        <div class="dice-row" id="strength-dice">
+          <div class="dice-button selected" data-attribute="strength" data-dice="d4">d4</div>
+          <div class="dice-button" data-attribute="strength" data-dice="d6">d6</div>
+          <div class="dice-button" data-attribute="strength" data-dice="d8">d8</div>
+          <div class="dice-button" data-attribute="strength" data-dice="d10">d10</div>
+          <div class="dice-button" data-attribute="strength" data-dice="d12">d12</div>
+        </div>
+      </div>
+      
+      <div class="attribute-row">
+        <div class="attribute-name">VIGOR</div>
+        <div class="dice-row" id="vigor-dice">
+          <div class="dice-button selected" data-attribute="vigor" data-dice="d4">d4</div>
+          <div class="dice-button" data-attribute="vigor" data-dice="d6">d6</div>
+          <div class="dice-button" data-attribute="vigor" data-dice="d8">d8</div>
+          <div class="dice-button" data-attribute="vigor" data-dice="d10">d10</div>
+          <div class="dice-button" data-attribute="vigor" data-dice="d12">d12</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Derived Stats -->
+    <div class="derived-stats">
+      <div class="derived-stat">
+        <label for="pace">Pace</label>
+        <input type="number" id="pace" value="0">
+      </div>
+      <div class="derived-stat">
+        <label for="parry">Parry</label>
+        <input type="number" id="parry" value="0">
+      </div>
+      <div class="derived-stat">
+        <label for="toughness">Toughness</label>
+        <input type="number" id="toughness" value="0">
+      </div>
+    </div>
+    
+    <!-- Main content area with two columns -->
+    <div class="main-content">
+      <div class="left-column">
+        <!-- Skills Section -->
+        <div class="section">
+          <div class="section-title">SKILLS</div>
+          
+          <div class="skill-row">
+            <div class="skill-name">Athletics</div>
+            <div class="dice-row" id="athletics-dice">
+              <div class="dice-button selected" data-skill="athletics" data-dice="d4">d4</div>
+              <div class="dice-button" data-skill="athletics" data-dice="d6">d6</div>
+              <div class="dice-button" data-skill="athletics" data-dice="d8">d8</div>
+              <div class="dice-button" data-skill="athletics" data-dice="d10">d10</div>
+              <div class="dice-button" data-skill="athletics" data-dice="d12">d12</div>
+            </div>
+          </div>
+          
+          <div class="skill-row">
+            <div class="skill-name">Common Knowledge</div>
+            <div class="dice-row" id="common-knowledge-dice">
+              <div class="dice-button selected" data-skill="common-knowledge" data-dice="d4">d4</div>
+              <div class="dice-button" data-skill="common-knowledge" data-dice="d6">d6</div>
+              <div class="dice-button" data-skill="common-knowledge" data-dice="d8">d8</div>
+              <div class="dice-button" data-skill="common-knowledge" data-dice="d10">d10</div>
+              <div class="dice-button" data-skill="common-knowledge" data-dice="d12">d12</div>
+            </div>
+          </div>
+          
+          <div class="skill-row">
+            <div class="skill-name">Notice</div>
+            <div class="dice-row" id="notice-dice">
+              <div class="dice-button selected" data-skill="notice" data-dice="d4">d4</div>
+              <div class="dice-button" data-skill="notice" data-dice="d6">d6</div>
+              <div class="dice-button" data-skill="notice" data-dice="d8">d8</div>
+              <div class="dice-button" data-skill="notice" data-dice="d10">d10</div>
+              <div class="dice-button" data-skill="notice" data-dice="d12">d12</div>
+            </div>
+          </div>
+          
+          <div class="skill-row">
+            <div class="skill-name">Persuasion</div>
+            <div class="dice-row" id="persuasion-dice">
+              <div class="dice-button selected" data-skill="persuasion" data-dice="d4">d4</div>
+              <div class="dice-button" data-skill="persuasion" data-dice="d6">d6</div>
+              <div class="dice-button" data-skill="persuasion" data-dice="d8">d8</div>
+              <div class="dice-button" data-skill="persuasion" data-dice="d10">d10</div>
+              <div class="dice-button" data-skill="persuasion" data-dice="d12">d12</div>
+            </div>
+          </div>
+          
+          <div class="skill-row">
+            <div class="skill-name">Stealth</div>
+            <div class="dice-row" id="stealth-dice">
+              <div class="dice-button selected" data-skill="stealth" data-dice="d4">d4</div>
+              <div class="dice-button" data-skill="stealth" data-dice="d6">d6</div>
+              <div class="dice-button" data-skill="stealth" data-dice="d8">d8</div>
+              <div class="dice-button" data-skill="stealth" data-dice="d10">d10</div>
+              <div class="dice-button" data-skill="stealth" data-dice="d12">d12</div>
+            </div>
+          </div>
+          
+          <div id="custom-skills">
+            <!-- Custom skills will be added here -->
+          </div>
+          
+          <button class="add-button" id="add-skill-btn">Add Skill</button>
+        </div>
+        
+        <!-- Powers Section -->
+        <div class="section">
+          <div class="section-title">POWERS</div>
+          
+          <div class="power-header">
+            <div>POWER</div>
+            <div>PP</div>
+            <div>RANGE</div>
+            <div>DUR.</div>
+            <div>EFFECT</div>
+          </div>
+          
+          <div id="powers-list">
+            <!-- Powers will be added here -->
+          </div>
+          
+          <button class="add-button" id="add-power-btn">Add Power</button>
+        </div>
+      </div>
+      
+      <div class="right-column">
+        <!-- Gear Section -->
+        <div class="section">
+          <div class="section-title">GEAR</div>
+          
+          <div id="gear-list" class="gear-list">
+            <!-- Gear items will be added here -->
+          </div>
+          
+          <button class="add-button" id="add-gear-btn">Add Gear</button>
+        </div>
+        
+        <!-- Hindrances Section -->
+        <div class="section">
+          <div class="section-title">HINDRANCES</div>
+          
+          <div id="hindrance-list" class="hindrance-list">
+            <!-- Hindrances will be added here -->
+          </div>
+          
+          <button class="add-button" id="add-hindrance-btn">Add Hindrance</button>
+        </div>
+        
+        <!-- Edges and Advances Section -->
+        <div class="section">
+          <div class="section-title">EDGES AND ADVANCES</div>
+          
+          <div id="edge-list" class="edge-list">
+            <!-- Edges and advances will be added here -->
+          </div>
+          
+          <button class="add-button" id="add-edge-btn">Add Edge/Advance</button>
+        </div>
+        
+        <!-- Wounds and Fatigue Section -->
+        <div class="wound-fatigue">
+          <div class="wounds section">
+            <div class="section-title">WOUNDS</div>
+            <div class="track">
+              <div>
+                <input type="radio" name="wounds" id="wounds-0" value="0" checked>
+                <label for="wounds-0">0</label>
+              </div>
+              <div>
+                <input type="radio" name="wounds" id="wounds-1" value="-1">
+                <label for="wounds-1">-1</label>
+              </div>
+              <div>
+                <input type="radio" name="wounds" id="wounds-2" value="-2">
+                <label for="wounds-2">-2</label>
+              </div>
+              <div>
+                <input type="radio" name="wounds" id="wounds-3" value="-3">
+                <label for="wounds-3">-3</label>
+              </div>
+              <div>
+                <input type="radio" name="wounds" id="wounds-inc" value="INC">
+                <label for="wounds-inc">INC</label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="fatigue section">
+            <div class="section-title">FATIGUE</div>
+            <div class="track">
+              <div>
+                <input type="radio" name="fatigue" id="fatigue-0" value="0" checked>
+                <label for="fatigue-0">0</label>
+              </div>
+              <div>
+                <input type="radio" name="fatigue" id="fatigue-1" value="-1">
+                <label for="fatigue-1">-1</label>
+              </div>
+              <div>
+                <input type="radio" name="fatigue" id="fatigue-2" value="-2">
+                <label for="fatigue-2">-2</label>
+              </div>
+              <div>
+                <input type="radio" name="fatigue" id="fatigue-inc" value="INC">
+                <label for="fatigue-inc">INC</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Weapons Section -->
+    <div class="section">
+      <div class="section-title">WEAPONS</div>
+      
+      <div class="weapon-header">
+        <div>WEAPON</div>
+        <div>RANGE</div>
+        <div>DAMAGE</div>
+        <div>AP</div>
+        <div>ROF</div>
+        <div>WT</div>
+        <div>NOTES</div>
+      </div>
+      
+      <div id="weapons-list">
+        <!-- Weapons will be added here -->
+      </div>
+      
+      <button class="add-button" id="add-weapon-btn">Add Weapon</button>
+    </div>
+  </div>
+  
+  <!-- Save/Load Controls -->
+  <div class="save-load">
+    <button id="save-btn">Save Character</button>
+    <button id="load-btn">Load Character</button>
+  </div>
+  
+  <textarea id="characterData" placeholder="Character data will appear here when saved. Copy this text to save your character externally, or paste saved data here and click 'Load Character'."></textarea>
+  
+  <script>
+    // Wait for DOM content to load
+    window.addEventListener('DOMContentLoaded', function() {
+      // Setup dice buttons
+      document.querySelectorAll('.dice-button').forEach(function(button) {
+        button.addEventListener('click', function() {
+          const parent = this.parentElement;
+          parent.querySelectorAll('.dice-button').forEach(function(btn) {
+            btn.classList.remove('selected');
+          });
+          this.classList.add('selected');
+        });
+      });
+      
+      // Add skill button functionality
+      document.getElementById('add-skill-btn').addEventListener('click', function() {
+        const skillRow = document.createElement('div');
+        skillRow.className = 'skill-row';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'skill-name';
+        nameInput.placeholder = 'Skill name';
+        
+        const diceContainer = document.createElement('div');
+        diceContainer.className = 'dice-row';
+        
+        const diceValues = ['d4', 'd6', 'd8', 'd10', 'd12'];
+        diceValues.forEach(function(dice, index) {
+          const diceBtn = document.createElement('div');
+          diceBtn.className = index === 0 ? 'dice-button selected' : 'dice-button';
+          diceBtn.textContent = dice;
+          diceBtn.addEventListener('click', function() {
+            diceContainer.querySelectorAll('.dice-button').forEach(function(btn) {
+              btn.classList.remove('selected');
+            });
+            this.classList.add('selected');
+          });
+          diceContainer.appendChild(diceBtn);
+        });
+        
+        skillRow.appendChild(nameInput);
+        skillRow.appendChild(diceContainer);
+        document.getElementById('custom-skills').appendChild(skillRow);
+      });
+      
+      // Add gear button functionality
+      document.getElementById('add-gear-btn').addEventListener('click', function() {
+        const gearItem = document.createElement('div');
+        gearItem.className = 'gear-item';
+        
+        const gearInput = document.createElement('input');
+        gearInput.type = 'text';
+        gearInput.placeholder = 'Gear item';
+        gearInput.style.width = '100%';
+        
+        gearItem.appendChild(gearInput);
+        document.getElementById('gear-list').appendChild(gearItem);
+      });
+      
+      // Add hindrance button functionality
+      document.getElementById('add-hindrance-btn').addEventListener('click', function() {
+        const hindranceItem = document.createElement('div');
+        hindranceItem.className = 'hindrance-item';
+        
+        const hindranceInput = document.createElement('input');
+        hindranceInput.type = 'text';
+        hindranceInput.placeholder = 'Hindrance';
+        hindranceInput.style.width = '100%';
+        
+        hindranceItem.appendChild(hindranceInput);
+        document.getElementById('hindrance-list').appendChild(hindranceItem);
+      });
+      
+      // Add edge button functionality
+      document.getElementById('add-edge-btn').addEventListener('click', function() {
+        const edgeItem = document.createElement('div');
+        edgeItem.className = 'edge-item';
+        
+        const edgeInput = document.createElement('input');
+        edgeInput.type = 'text';
+        edgeInput.placeholder = 'Edge/Advance';
+        edgeInput.style.width = '100%';
+        
+        edgeItem.appendChild(edgeInput);
+        document.getElementById('edge-list').appendChild(edgeItem);
+      });
+      
+      // Add power button functionality
+      document.getElementById('add-power-btn').addEventListener('click', function() {
+        const powerRow = document.createElement('div');
+        powerRow.className = 'power-row';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Power name';
+        
+        const ppInput = document.createElement('input');
+        ppInput.type = 'text';
+        ppInput.placeholder = 'PP';
+        
+        const rangeInput = document.createElement('input');
+        rangeInput.type = 'text';
+        rangeInput.placeholder = 'Range';
+        
+        const durationInput = document.createElement('input');
+        durationInput.type = 'text';
+        durationInput.placeholder = 'Duration';
+        
+        const effectInput = document.createElement('input');
+        effectInput.type = 'text';
+        effectInput.placeholder = 'Effect';
+        
+        powerRow.appendChild(nameInput);
+        powerRow.appendChild(ppInput);
+        powerRow.appendChild(rangeInput);
+        powerRow.appendChild(durationInput);
+        powerRow.appendChild(effectInput);
+        document.getElementById('powers-list').appendChild(powerRow);
+      });
+      
+      // Add weapon button functionality
+      document.getElementById('add-weapon-btn').addEventListener('click', function() {
+        const weaponRow = document.createElement('div');
+        weaponRow.className = 'weapon-row';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Weapon name';
+        
+        const rangeInput = document.createElement('input');
+        rangeInput.type = 'text';
+        rangeInput.placeholder = 'Range';
+        
+        const damageInput = document.createElement('input');
+        damageInput.type = 'text';
+        damageInput.placeholder = 'Damage';
+        
+        const apInput = document.createElement('input');
+        apInput.type = 'text';
+        apInput.placeholder = 'AP';
+        
+        const rofInput = document.createElement('input');
+        rofInput.type = 'text';
+        rofInput.placeholder = 'ROF';
+        
+        const wtInput = document.createElement('input');
+        wtInput.type = 'text';
+        wtInput.placeholder = 'WT';
+        
+        const notesInput = document.createElement('input');
+        notesInput.type = 'text';
+        notesInput.placeholder = 'Notes';
+        
+        weaponRow.appendChild(nameInput);
+        weaponRow.appendChild(rangeInput);
+        weaponRow.appendChild(damageInput);
+        weaponRow.appendChild(apInput);
+        weaponRow.appendChild(rofInput);
+        weaponRow.appendChild(wtInput);
+        weaponRow.appendChild(notesInput);
+        document.getElementById('weapons-list').appendChild(weaponRow);
+      });
+      
+      // Complete the getSelectedDice function
+      function getSelectedDice(rowId) {
+        const row = document.getElementById(rowId);
+        const selected = row.querySelector('.dice-button.selected');
+        return selected ? selected.textContent : null;
+      }
+      
+      // Save character data functionality
+      document.getElementById('save-btn').addEventListener('click', function() {
+        const character = {};
+        
+        // Basic info
+        character.name = document.getElementById('name').value;
+        character.nickname = document.getElementById('nickname').value;
+        character.bennies = document.getElementById('bennies').value;
+        character.conviction = document.getElementById('conviction').value;
+        
+        // Attributes
+        character.attributes = {};
+        ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+          character.attributes[attr] = getSelectedDice(attr + '-dice');
+        });
+        
+        // Derived stats
+        character.pace = document.getElementById('pace').value;
+        character.parry = document.getElementById('parry').value;
+        character.toughness = document.getElementById('toughness').value;
+        
+        // Skills
+        character.skills = {};
+        document.querySelectorAll('.section .skill-row').forEach(function(row) {
+          const skillInput = row.querySelector('.skill-name');
+          const dice = row.querySelector('.dice-button.selected').textContent;
+          const skillName = skillInput.value || skillInput.placeholder;
+          character.skills[skillName] = dice;
+        });
+        
+        // Powers
+        character.powers = [];
+        document.querySelectorAll('.power-row').forEach(function(row) {
+          const inputs = row.querySelectorAll('input');
+          character.powers.push({
+            name: inputs[0].value,
+            pp: inputs[1].value,
+            range: inputs[2].value,
+            duration: inputs[3].value,
+            effect: inputs[4].value
+          });
+        });
+        
+        // Gear
+        character.gear = [];
+        document.querySelectorAll('.gear-item input').forEach(function(input) {
+          character.gear.push(input.value);
+        });
+        
+        // Hindrances
+        character.hindrances = [];
+        document.querySelectorAll('.hindrance-item input').forEach(function(input) {
+          character.hindrances.push(input.value);
+        });
+        
+        // Edges
+        character.edges = [];
+        document.querySelectorAll('.edge-item input').forEach(function(input) {
+          character.edges.push(input.value);
+        });
+        
+        // Weapons
+        character.weapons = [];
+        document.querySelectorAll('.weapon-row').forEach(function(row) {
+          const inputs = row.querySelectorAll('input');
+          character.weapons.push({
+            name: inputs[0].value,
+            range: inputs[1].value,
+            damage: inputs[2].value,
+            ap: inputs[3].value,
+            rof: inputs[4].value,
+            wt: inputs[5].value,
+            notes: inputs[6].value
+          });
+        });
+        
+        document.getElementById('characterData').value = JSON.stringify(character, null, 2);
+      });
+      
+      // Load character data functionality
+      document.getElementById('load-btn').addEventListener('click', function() {
+        let data;
+        try {
+          data = JSON.parse(document.getElementById('characterData').value);
+        } catch(e) {
+          alert('Invalid character data');
+          return;
+        }
+        
+        // Basic info
+        document.getElementById('name').value = data.name || '';
+        document.getElementById('nickname').value = data.nickname || '';
+        document.getElementById('bennies').value = data.bennies || 3;
+        document.getElementById('conviction').value = data.conviction || 0;
+        
+        // Attributes
+        if(data.attributes) {
+          ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+            const diceRow = document.getElementById(attr + '-dice');
+            if(diceRow) {
+              diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+                btn.classList.toggle('selected', btn.textContent === data.attributes[attr]);
+              });
+            }
+          });
+        }
+        
+        // Derived stats
+        document.getElementById('pace').value = data.pace || 6;
+        document.getElementById('parry').value = data.parry || 2;
+        document.getElementById('toughness').value = data.toughness || 4;
+        
+        // Skills
+        // Reset custom skills
+        document.getElementById('custom-skills').innerHTML = '';
+        const standardSkills = ['Athletics', 'Common Knowledge', 'Notice', 'Persuasion', 'Stealth'];
+        if(data.skills) {
+          Object.keys(data.skills).forEach(function(skill) {
+            if(standardSkills.includes(skill)) {
+              const rowId = skill.toLowerCase().replace(' ', '-') + '-dice';
+              const diceRow = document.getElementById(rowId);
+              if(diceRow) {
+                diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+                  btn.classList.toggle('selected', btn.textContent === data.skills[skill]);
+                });
+              }
+            } else {
+              // Add custom skill
+              const skillRow = document.createElement('div');
+              skillRow.className = 'skill-row';
+              const nameInput = document.createElement('input');
+              nameInput.type = 'text';
+              nameInput.className = 'skill-name';
+              nameInput.value = skill;
+              const diceContainer = document.createElement('div');
+              diceContainer.className = 'dice-row';
+              ['d4','d6','d8','d10','d12'].forEach(function(dice) {
+                const diceBtn = document.createElement('div');
+                diceBtn.className = dice === data.skills[skill] ? 'dice-button selected' : 'dice-button';
+                diceBtn.textContent = dice;
+                diceBtn.addEventListener('click', function() {
+                  diceContainer.querySelectorAll('.dice-button').forEach(function(btn) {
+                    btn.classList.remove('selected');
+                  });
+                  this.classList.add('selected');
+                });
+                diceContainer.appendChild(diceBtn);
+              });
+              skillRow.appendChild(nameInput);
+              skillRow.appendChild(diceContainer);
+              document.getElementById('custom-skills').appendChild(skillRow);
+            }
+          });
+        }
+        
+        // Powers
+        document.getElementById('powers-list').innerHTML = '';
+        if(data.powers && Array.isArray(data.powers)) {
+          data.powers.forEach(function(power) {
+            const powerRow = document.createElement('div');
+            powerRow.className = 'power-row';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Power name';
+            nameInput.value = power.name || '';
+            const ppInput = document.createElement('input');
+            ppInput.type = 'text';
+            ppInput.placeholder = 'PP';
+            ppInput.value = power.pp || '';
+            const rangeInput = document.createElement('input');
+            rangeInput.type = 'text';
+            rangeInput.placeholder = 'Range';
+            rangeInput.value = power.range || '';
+            const durationInput = document.createElement('input');
+            durationInput.type = 'text';
+            durationInput.placeholder = 'Duration';
+            durationInput.value = power.duration || '';
+            const effectInput = document.createElement('input');
+            effectInput.type = 'text';
+            effectInput.placeholder = 'Effect';
+            effectInput.value = power.effect || '';
+            powerRow.appendChild(nameInput);
+            powerRow.appendChild(ppInput);
+            powerRow.appendChild(rangeInput);
+            powerRow.appendChild(durationInput);
+            powerRow.appendChild(effectInput);
+            document.getElementById('powers-list').appendChild(powerRow);
+          });
+        }
+        
+        // Gear
+        document.getElementById('gear-list').innerHTML = '';
+        if(data.gear && Array.isArray(data.gear)) {
+          data.gear.forEach(function(item) {
+            const gearItem = document.createElement('div');
+            gearItem.className = 'gear-item';
+            const gearInput = document.createElement('input');
+            gearInput.type = 'text';
+            gearInput.placeholder = 'Gear item';
+            gearInput.style.width = '100%';
+            gearInput.value = item;
+            gearItem.appendChild(gearInput);
+            document.getElementById('gear-list').appendChild(gearItem);
+          });
+        }
+        
+        // Hindrances
+        document.getElementById('hindrance-list').innerHTML = '';
+        if(data.hindrances && Array.isArray(data.hindrances)) {
+          data.hindrances.forEach(function(item) {
+            const hindranceItem = document.createElement('div');
+            hindranceItem.className = 'hindrance-item';
+            const hindranceInput = document.createElement('input');
+            hindranceInput.type = 'text';
+            hindranceInput.placeholder = 'Hindrance';
+            hindranceInput.style.width = '100%';
+            hindranceInput.value = item;
+            hindranceItem.appendChild(hindranceInput);
+            document.getElementById('hindrance-list').appendChild(hindranceItem);
+          });
+        }
+        
+        // Edges
+        document.getElementById('edge-list').innerHTML = '';
+        if(data.edges && Array.isArray(data.edges)) {
+          data.edges.forEach(function(item) {
+            const edgeItem = document.createElement('div');
+            edgeItem.className = 'edge-item';
+            const edgeInput = document.createElement('input');
+            edgeInput.type = 'text';
+            edgeInput.placeholder = 'Edge/Advance';
+            edgeInput.style.width = '100%';
+            edgeInput.value = item;
+            edgeItem.appendChild(edgeInput);
+            document.getElementById('edge-list').appendChild(edgeItem);
+          });
+        }
+        
+        // Weapons
+        document.getElementById('weapons-list').innerHTML = '';
+        if(data.weapons && Array.isArray(data.weapons)) {
+          data.weapons.forEach(function(weapon) {
+            const weaponRow = document.createElement('div');
+            weaponRow.className = 'weapon-row';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Weapon name';
+            nameInput.value = weapon.name || '';
+            const rangeInput = document.createElement('input');
+            rangeInput.type = 'text';
+            rangeInput.placeholder = 'Range';
+            rangeInput.value = weapon.range || '';
+            const damageInput = document.createElement('input');
+            damageInput.type = 'text';
+            damageInput.placeholder = 'Damage';
+            damageInput.value = weapon.damage || '';
+            const apInput = document.createElement('input');
+            apInput.type = 'text';
+            apInput.placeholder = 'AP';
+            apInput.value = weapon.ap || '';
+            const rofInput = document.createElement('input');
+            rofInput.type = 'text';
+            rofInput.placeholder = 'ROF';
+            rofInput.value = weapon.rof || '';
+            const wtInput = document.createElement('input');
+            wtInput.type = 'text';
+            wtInput.placeholder = 'WT';
+            wtInput.value = weapon.wt || '';
+            const notesInput = document.createElement('input');
+            notesInput.type = 'text';
+            notesInput.placeholder = 'Notes';
+            notesInput.value = weapon.notes || '';
+            weaponRow.appendChild(nameInput);
+            weaponRow.appendChild(rangeInput);
+            weaponRow.appendChild(damageInput);
+            weaponRow.appendChild(apInput);
+            weaponRow.appendChild(rofInput);
+            weaponRow.appendChild(wtInput);
+            weaponRow.appendChild(notesInput);
+            document.getElementById('weapons-list').appendChild(weaponRow);
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
