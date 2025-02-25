@@ -1,5 +1,7 @@
 # Deadlands Character Sheet
 
+[Link to hosted character sheet](https://coldplazma.github.io/Deadlands-sheet/deadlands-character-sheet.html)
+
 A custom character sheet for **Deadlands: The Weird West** using **Savage Worlds Adventure Edition** rules. This sheet is built with HTML, CSS, and JavaScript, and allows users to create, save, and load character data in JSON format.
 
 ## Features
