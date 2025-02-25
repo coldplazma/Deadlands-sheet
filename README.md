@@ -2,7 +2,7 @@
 
 [Link to hosted character sheet](https://coldplazma.github.io/Deadlands-sheet/deadlands-character-sheet.html)
 
-A custom character sheet for **Deadlands: The Weird West** using **Savage Worlds Adventure Edition** rules. This sheet is built with HTML, CSS, and JavaScript, and allows users to create, save, and load character data in JSON format.
+A custom character sheet for **Deadlands: The Weird West** using **Savage Worlds Adventure Edition** rules. This sheet is built with HTML, CSS, and JavaScript, and allows users to create, save, and load character data using the browser's IndexedDB storage or via JSON format.
 
 ## Features
 
@@ -27,9 +27,12 @@ A custom character sheet for **Deadlands: The Weird West** using **Savage Worlds
 - **Wounds and Fatigue**  
   Radio buttons to track wound penalties and fatigue penalties, including incapacitation (INC).
 
-- **Save/Load Functionality**  
-  - **Save Character**: Collects all character data (Attributes, Skills, Powers, Gear, Hindrances, Edges, Weapons, etc.) and converts it to JSON.  
-  - **Load Character**: Restores the character data from JSON, re-populating all fields.
+- **Enhanced Save/Load Functionality**  
+  - **New Character**: Create a new blank character sheet.
+  - **Save Character**: Save character data directly to your browser's IndexedDB storage.
+  - **Load Character**: View a list of all your saved characters with timestamps and load any character with a single click.
+  - **Export Character**: Export character data as JSON for backup or sharing with other players.
+  - **Import Character**: Import previously exported JSON character data.
 
 ## Getting Started
 
@@ -43,15 +46,34 @@ A custom character sheet for **Deadlands: The Weird West** using **Savage Worlds
    - Click on any of the dice buttons (e.g., d4, d6, etc.) to select the die type for each attribute or skill.  
    - Use the “Add” buttons to insert more skills, powers, gear, hindrances, edges/advances, or weapons.
 
-2. **Saving**  
-   - Click **Save Character**.  
-   - The JSON data for your character will appear in the `textarea` at the bottom of the page.  
-   - **Copy** and save this JSON text in a safe place (e.g., a text file) to keep your character data.
+2. **Managing Characters**  
+   - Fill out your character sheet.
+   - Click **Save Character** to store it in your browser's IndexedDB storage.
+   - Your character will be saved locally in your browser and persist between sessions.
+   - Click **New Character** at any time to start fresh.
+   
+3. **Loading Characters**  
+   - Click **Load Character** to see a list of all your saved characters with their last update time.
+   - Click the **Load** button next to the character you want to load.
+   - The sheet will automatically populate with the saved data.
+   - You can also delete unwanted characters from this screen.
 
-3. **Loading**  
-   - **Paste** previously saved JSON data into the `textarea`.  
-   - Click **Load Character**.  
-   - The sheet will automatically populate with the pasted data.
+4. **Backup and Sharing**  
+   - Click **Export Character** to export the current character as JSON.
+   - Copy the JSON text to save it externally or share it with other players.
+   - To import a character from JSON, click **Import Character**, paste the JSON, and click anywhere outside the text area.
+
+## Browser Storage
+
+- **Data Persistence**  
+  - Characters are saved to your browser's IndexedDB storage.
+  - Data persists between browser sessions and closing/reopening the browser.
+  - Each browser maintains its own storage, so characters saved in Chrome won't appear in Firefox.
+
+- **Storage Limitations**  
+  - IndexedDB storage is tied to the domain, so if you move the HTML file to a different server, the saved data won't transfer.
+  - Different browsers have different storage limits, but they are typically more than enough for character data.
+  - For backups or transferring characters between devices, use the Export/Import functionality.
 
 ## Customizing
 
