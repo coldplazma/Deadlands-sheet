@@ -259,6 +259,7 @@
       cursor: pointer;
       font-weight: bold;
       font-size: 1rem;
+      margin: 0 5px;
     }
     
     textarea#characterData {
@@ -270,6 +271,37 @@
       border: 1px solid var(--border-color);
       padding: 10px;
       font-family: monospace;
+    }
+    
+    #character-list-container {
+      display: none;
+      margin-bottom: 20px;
+      background-color: var(--parchment-color);
+      border: 1px solid var(--border-color);
+    }
+    
+    .character-list-item {
+      transition: background-color 0.2s;
+    }
+    
+    .character-list-item:hover {
+      background-color: rgba(139, 46, 0, 0.1);
+    }
+    
+    .character-list-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .close-btn {
+      background-color: #555;
+      color: white;
+      border: none;
+      padding: 5px 15px;
+      cursor: pointer;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -577,15 +609,664 @@
   
   <!-- Save/Load Controls -->
   <div class="save-load">
+    <button id="new-btn">New Character</button>
     <button id="save-btn">Save Character</button>
     <button id="load-btn">Load Character</button>
+    <button id="export-btn">Export Character</button>
+    <button id="import-btn">Import Character</button>
   </div>
   
-  <textarea id="characterData" placeholder="Character data will appear here when saved. Copy this text to save your character externally, or paste saved data here and click 'Load Character'."></textarea>
+  <div id="character-list-container" class="section" style="max-width: 850px; margin-top: 20px;">
+    <div class="section-title">SAVED CHARACTERS</div>
+    <div id="character-list" style="max-height: 200px; overflow-y: auto;">
+      <!-- Character list will be displayed here -->
+    </div>
+    <div class="character-list-actions">
+      <button id="close-character-list" class="close-btn">Close</button>
+    </div>
+  </div>
+  
+  <textarea id="characterData" placeholder="Character data will appear here when exported. Copy this text to save your character externally, or paste saved data here and click 'Import Character'." style="display: none;"></textarea>
   
   <script>
+    // Initialize global variables
+    let db;
+    const DB_NAME = 'deadlandsCharacterDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'characters';
+    window.currentCharacterId = null;
+    
+    // Initialize IndexedDB
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = event => {
+          console.error('IndexedDB error:', event.target.error);
+          reject('Could not open IndexedDB');
+        };
+        
+        request.onsuccess = event => {
+          db = event.target.result;
+          console.log('IndexedDB opened successfully');
+          resolve(db);
+        };
+        
+        request.onupgradeneeded = event => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('lastUpdated', 'lastUpdated', { unique: false });
+          }
+        };
+      });
+    }
+    
+    // Save character to IndexedDB
+    function saveCharacterToDB(character) {
+      return new Promise((resolve, reject) => {
+        if (!db) {
+          reject('Database not initialized');
+          return;
+        }
+        
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        // Add timestamp
+        character.lastUpdated = new Date().toISOString();
+        
+        // If saving an existing character (has an ID), update it
+        if (character.id) {
+          const request = store.put(character);
+          
+          request.onsuccess = () => {
+            resolve(character.id);
+          };
+          
+          request.onerror = event => {
+            reject('Error updating character: ' + event.target.error);
+          };
+        } else {
+          // New character
+          const request = store.add(character);
+          
+          request.onsuccess = event => {
+            resolve(event.target.result); // Returns the generated ID
+          };
+          
+          request.onerror = event => {
+            reject('Error saving character: ' + event.target.error);
+          };
+        }
+      });
+    }
+    
+    // Load character from IndexedDB
+    function loadCharacterFromDB(id) {
+      return new Promise((resolve, reject) => {
+        if (!db) {
+          reject('Database not initialized');
+          return;
+        }
+        
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(id);
+        
+        request.onsuccess = event => {
+          if (request.result) {
+            resolve(request.result);
+          } else {
+            reject('Character not found');
+          }
+        };
+        
+        request.onerror = event => {
+          reject('Error loading character: ' + event.target.error);
+        };
+      });
+    }
+    
+    // Delete character from IndexedDB
+    function deleteCharacterFromDB(id) {
+      return new Promise((resolve, reject) => {
+        if (!db) {
+          reject('Database not initialized');
+          return;
+        }
+        
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
+        
+        request.onsuccess = () => {
+          resolve();
+        };
+        
+        request.onerror = event => {
+          reject('Error deleting character: ' + event.target.error);
+        };
+      });
+    }
+    
+    // Helper to get selected dice from a row
+    function getSelectedDice(rowId) {
+      const row = document.getElementById(rowId);
+      const selected = row.querySelector('.dice-button.selected');
+      return selected ? selected.textContent : null;
+    }
+    
+    // Function to collect character data from the form
+    function collectCharacterData() {
+      const character = {};
+      
+      // If we're updating an existing character, retain its ID
+      if (window.currentCharacterId) {
+        character.id = window.currentCharacterId;
+      }
+      
+      // Basic info
+      character.name = document.getElementById('name').value;
+      character.nickname = document.getElementById('nickname').value;
+      character.bennies = document.getElementById('bennies').value;
+      character.conviction = document.getElementById('conviction').value;
+      
+      // Attributes
+      character.attributes = {};
+      ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+        character.attributes[attr] = getSelectedDice(attr + '-dice');
+      });
+      
+      // Derived stats
+      character.pace = document.getElementById('pace').value;
+      character.parry = document.getElementById('parry').value;
+      character.toughness = document.getElementById('toughness').value;
+      
+      // Skills
+      character.skills = {};
+      document.querySelectorAll('.section .skill-row').forEach(function(row) {
+        const diceButton = row.querySelector('.dice-button.selected');
+        if (!diceButton) return; // no selected dice found, skip
+        
+        const skillNameEl = row.querySelector('.skill-name');
+        let skillName = '';
+        
+        if (skillNameEl.tagName.toLowerCase() === 'div') {
+          // Default skills use a <div>
+          skillName = skillNameEl.textContent.trim();
+        } else {
+          // Custom skills use an <input>
+          skillName = skillNameEl.value.trim() || skillNameEl.placeholder.trim();
+        }
+        
+        character.skills[skillName] = diceButton.textContent;
+      });
+      
+      // Powers
+      character.powers = [];
+      document.querySelectorAll('.power-row').forEach(function(row) {
+        const inputs = row.querySelectorAll('input');
+        character.powers.push({
+          name: inputs[0].value,
+          pp: inputs[1].value,
+          range: inputs[2].value,
+          duration: inputs[3].value,
+          effect: inputs[4].value
+        });
+      });
+      
+      // Gear
+      character.gear = [];
+      document.querySelectorAll('.gear-item input').forEach(function(input) {
+        character.gear.push(input.value);
+      });
+      
+      // Hindrances
+      character.hindrances = [];
+      document.querySelectorAll('.hindrance-item input').forEach(function(input) {
+        character.hindrances.push(input.value);
+      });
+      
+      // Edges
+      character.edges = [];
+      document.querySelectorAll('.edge-item input').forEach(function(input) {
+        character.edges.push(input.value);
+      });
+      
+      // Weapons
+      character.weapons = [];
+      document.querySelectorAll('.weapon-row').forEach(function(row) {
+        const inputs = row.querySelectorAll('input');
+        character.weapons.push({
+          name: inputs[0].value,
+          range: inputs[1].value,
+          damage: inputs[2].value,
+          ap: inputs[3].value,
+          rof: inputs[4].value,
+          wt: inputs[5].value,
+          notes: inputs[6].value
+        });
+      });
+      
+      // Add wound and fatigue status
+      character.wounds = document.querySelector('input[name="wounds"]:checked').value;
+      character.fatigue = document.querySelector('input[name="fatigue"]:checked').value;
+      
+      return character;
+    }
+    
+    // Function to populate the character sheet
+    function populateCharacterSheet(data) {
+      // Basic info
+      document.getElementById('name').value = data.name || '';
+      document.getElementById('nickname').value = data.nickname || '';
+      document.getElementById('bennies').value = data.bennies || 0;
+      document.getElementById('conviction').value = data.conviction || 0;
+      
+      // Attributes
+      if(data.attributes) {
+        ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+          const diceRow = document.getElementById(attr + '-dice');
+          if(diceRow) {
+            diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+              btn.classList.toggle('selected', btn.textContent === data.attributes[attr]);
+            });
+          }
+        });
+      }
+      
+      // Derived stats
+      document.getElementById('pace').value = data.pace || 6;
+      document.getElementById('parry').value = data.parry || 2;
+      document.getElementById('toughness').value = data.toughness || 4;
+      
+      // Skills
+      // Reset custom skills
+      document.getElementById('custom-skills').innerHTML = '';
+      const standardSkills = ['Athletics', 'Common Knowledge', 'Notice', 'Persuasion', 'Stealth'];
+      
+      if(data.skills) {
+        Object.keys(data.skills).forEach(function(skill) {
+          if(standardSkills.includes(skill)) {
+            // If it's a default skill, find its dice row by ID
+            const rowId = skill.toLowerCase().replace(' ', '-') + '-dice';
+            const diceRow = document.getElementById(rowId);
+            if(diceRow) {
+              diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+                btn.classList.toggle('selected', btn.textContent === data.skills[skill]);
+              });
+            }
+          } else {
+            // Otherwise, create a custom skill row
+            const skillRow = document.createElement('div');
+            skillRow.className = 'skill-row';
+            
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'skill-name';
+            nameInput.value = skill;
+            
+            const diceContainer = document.createElement('div');
+            diceContainer.className = 'dice-row';
+            
+            ['d4','d6','d8','d10','d12'].forEach(function(dice) {
+              const diceBtn = document.createElement('div');
+              diceBtn.className = dice === data.skills[skill] ? 'dice-button selected' : 'dice-button';
+              diceBtn.textContent = dice;
+              diceBtn.addEventListener('click', function() {
+                diceContainer.querySelectorAll('.dice-button').forEach(function(btn) {
+                  btn.classList.remove('selected');
+                });
+                this.classList.add('selected');
+              });
+              diceContainer.appendChild(diceBtn);
+            });
+            
+            skillRow.appendChild(nameInput);
+            skillRow.appendChild(diceContainer);
+            document.getElementById('custom-skills').appendChild(skillRow);
+          }
+        });
+      }
+      
+      // Powers
+      document.getElementById('powers-list').innerHTML = '';
+      if(data.powers && Array.isArray(data.powers)) {
+        data.powers.forEach(function(power) {
+          const powerRow = document.createElement('div');
+          powerRow.className = 'power-row';
+          const nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.placeholder = 'Power name';
+          nameInput.value = power.name || '';
+          const ppInput = document.createElement('input');
+          ppInput.type = 'text';
+          ppInput.placeholder = 'PP';
+          ppInput.value = power.pp || '';
+          const rangeInput = document.createElement('input');
+          rangeInput.type = 'text';
+          rangeInput.placeholder = 'Range';
+          rangeInput.value = power.range || '';
+          const durationInput = document.createElement('input');
+          durationInput.type = 'text';
+          durationInput.placeholder = 'Duration';
+          durationInput.value = power.duration || '';
+          const effectInput = document.createElement('input');
+          effectInput.type = 'text';
+          effectInput.placeholder = 'Effect';
+          effectInput.value = power.effect || '';
+          powerRow.appendChild(nameInput);
+          powerRow.appendChild(ppInput);
+          powerRow.appendChild(rangeInput);
+          powerRow.appendChild(durationInput);
+          powerRow.appendChild(effectInput);
+          document.getElementById('powers-list').appendChild(powerRow);
+        });
+      }
+      
+      // Gear
+      document.getElementById('gear-list').innerHTML = '';
+      if(data.gear && Array.isArray(data.gear)) {
+        data.gear.forEach(function(item) {
+          const gearItem = document.createElement('div');
+          gearItem.className = 'gear-item';
+          const gearInput = document.createElement('input');
+          gearInput.type = 'text';
+          gearInput.placeholder = 'Gear item';
+          gearInput.style.width = '100%';
+          gearInput.value = item;
+          gearItem.appendChild(gearInput);
+          document.getElementById('gear-list').appendChild(gearItem);
+        });
+      }
+      
+      // Hindrances
+      document.getElementById('hindrance-list').innerHTML = '';
+      if(data.hindrances && Array.isArray(data.hindrances)) {
+        data.hindrances.forEach(function(item) {
+          const hindranceItem = document.createElement('div');
+          hindranceItem.className = 'hindrance-item';
+          const hindranceInput = document.createElement('input');
+          hindranceInput.type = 'text';
+          hindranceInput.placeholder = 'Hindrance';
+          hindranceInput.style.width = '100%';
+          hindranceInput.value = item;
+          hindranceItem.appendChild(hindranceInput);
+          document.getElementById('hindrance-list').appendChild(hindranceItem);
+        });
+      }
+      
+      // Edges
+      document.getElementById('edge-list').innerHTML = '';
+      if(data.edges && Array.isArray(data.edges)) {
+        data.edges.forEach(function(item) {
+          const edgeItem = document.createElement('div');
+          edgeItem.className = 'edge-item';
+          const edgeInput = document.createElement('input');
+          edgeInput.type = 'text';
+          edgeInput.placeholder = 'Edge/Advance';
+          edgeInput.style.width = '100%';
+          edgeInput.value = item;
+          edgeItem.appendChild(edgeInput);
+          document.getElementById('edge-list').appendChild(edgeItem);
+        });
+      }
+      
+      // Weapons
+      document.getElementById('weapons-list').innerHTML = '';
+      if(data.weapons && Array.isArray(data.weapons)) {
+        data.weapons.forEach(function(weapon) {
+          const weaponRow = document.createElement('div');
+          weaponRow.className = 'weapon-row';
+          const nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.placeholder = 'Weapon name';
+          nameInput.value = weapon.name || '';
+          const rangeInput = document.createElement('input');
+          rangeInput.type = 'text';
+          rangeInput.placeholder = 'Range';
+          rangeInput.value = weapon.range || '';
+          const damageInput = document.createElement('input');
+          damageInput.type = 'text';
+          damageInput.placeholder = 'Damage';
+          damageInput.value = weapon.damage || '';
+          const apInput = document.createElement('input');
+          apInput.type = 'text';
+          apInput.placeholder = 'AP';
+          apInput.value = weapon.ap || '';
+          const rofInput = document.createElement('input');
+          rofInput.type = 'text';
+          rofInput.placeholder = 'ROF';
+          rofInput.value = weapon.rof || '';
+          const wtInput = document.createElement('input');
+          wtInput.type = 'text';
+          wtInput.placeholder = 'WT';
+          wtInput.value = weapon.wt || '';
+          const notesInput = document.createElement('input');
+          notesInput.type = 'text';
+          notesInput.placeholder = 'Notes';
+          notesInput.value = weapon.notes || '';
+          weaponRow.appendChild(nameInput);
+          weaponRow.appendChild(rangeInput);
+          weaponRow.appendChild(damageInput);
+          weaponRow.appendChild(apInput);
+          weaponRow.appendChild(rofInput);
+          weaponRow.appendChild(wtInput);
+          weaponRow.appendChild(notesInput);
+          document.getElementById('weapons-list').appendChild(weaponRow);
+        });
+      }
+      
+      // Wounds and Fatigue
+      if (data.wounds) {
+        document.querySelector(`input[name="wounds"][value="${data.wounds}"]`).checked = true;
+      }
+      if (data.fatigue) {
+        document.querySelector(`input[name="fatigue"][value="${data.fatigue}"]`).checked = true;
+      }
+    }
+    
+    // Function to reset the character sheet
+    function resetCharacterSheet() {
+      // Clear character name and other basic info
+      document.getElementById('name').value = '';
+      document.getElementById('nickname').value = '';
+      document.getElementById('bennies').value = '0';
+      document.getElementById('conviction').value = '0';
+      
+      // Reset all attributes to d4
+      ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+        const diceRow = document.getElementById(attr + '-dice');
+        if(diceRow) {
+          diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+            btn.classList.toggle('selected', btn.textContent === 'd4');
+          });
+        }
+      });
+      
+      // Reset derived stats
+      document.getElementById('pace').value = '6';
+      document.getElementById('parry').value = '2';
+      document.getElementById('toughness').value = '4';
+      
+      // Reset standard skills to d4
+      const standardSkills = ['athletics', 'common-knowledge', 'notice', 'persuasion', 'stealth'];
+      standardSkills.forEach(function(skill) {
+        const diceRow = document.getElementById(skill + '-dice');
+        if(diceRow) {
+          diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+            btn.classList.toggle('selected', btn.textContent === 'd4');
+          });
+        }
+      });
+      
+      // Clear custom skills
+      document.getElementById('custom-skills').innerHTML = '';
+      
+      // Clear powers
+      document.getElementById('powers-list').innerHTML = '';
+      
+      // Clear gear
+      document.getElementById('gear-list').innerHTML = '';
+      
+      // Clear hindrances
+      document.getElementById('hindrance-list').innerHTML = '';
+      
+      // Clear edges
+      document.getElementById('edge-list').innerHTML = '';
+      
+      // Clear weapons
+      document.getElementById('weapons-list').innerHTML = '';
+      
+      // Reset wounds and fatigue
+      document.querySelector('input[name="wounds"][value="0"]').checked = true;
+      document.querySelector('input[name="fatigue"][value="0"]').checked = true;
+      
+      // Reset current character ID
+      window.currentCharacterId = null;
+    }
+
+    // Get all characters from IndexedDB
+    function getAllCharacters() {
+      return new Promise((resolve, reject) => {
+        if (!db) {
+          reject('Database not initialized');
+          return;
+        }
+        
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.index('lastUpdated').openCursor(null, 'prev'); // Get newest first
+        
+        const characters = [];
+        
+        request.onsuccess = event => {
+          const cursor = event.target.result;
+          if (cursor) {
+            characters.push(cursor.value);
+            cursor.continue();
+          } else {
+            resolve(characters);
+          }
+        };
+        
+        request.onerror = event => {
+          reject('Error getting characters: ' + event.target.error);
+        };
+      });
+    }
+    
+    // Update character list in UI
+    function updateCharacterList() {
+      const listContainer = document.getElementById('character-list');
+      listContainer.innerHTML = '';
+      
+      getAllCharacters()
+        .then(characters => {
+          if (characters.length === 0) {
+            listContainer.innerHTML = '<p>No characters saved yet.</p>';
+            return;
+          }
+          
+          characters.forEach(character => {
+            const listItem = document.createElement('div');
+            listItem.className = 'character-list-item';
+            listItem.style.display = 'flex';
+            listItem.style.justifyContent = 'space-between';
+            listItem.style.alignItems = 'center';
+            listItem.style.padding = '8px';
+            listItem.style.borderBottom = '1px solid var(--border-color)';
+            
+            const characterInfo = document.createElement('div');
+            const characterName = document.createElement('strong');
+            characterName.textContent = character.name || 'Unnamed Character';
+            
+            const lastUpdated = new Date(character.lastUpdated);
+            const dateString = `${lastUpdated.toLocaleDateString()} ${lastUpdated.toLocaleTimeString()}`;
+            const characterDate = document.createElement('span');
+            characterDate.textContent = ` - Last updated: ${dateString}`;
+            characterDate.style.fontSize = '0.8em';
+            characterDate.style.opacity = '0.7';
+            
+            characterInfo.appendChild(characterName);
+            characterInfo.appendChild(characterDate);
+            
+            const buttonContainer = document.createElement('div');
+            
+            const loadButton = document.createElement('button');
+            loadButton.textContent = 'Load';
+            loadButton.className = 'add-button';
+            loadButton.style.margin = '0 5px';
+            loadButton.style.padding = '5px 10px';
+            loadButton.style.fontSize = '0.8em';
+            loadButton.addEventListener('click', () => {
+              loadCharacterFromDB(character.id)
+                .then(loadedCharacter => {
+                  populateCharacterSheet(loadedCharacter);
+                  // Store the current character ID to know if we're updating or creating new
+                  window.currentCharacterId = character.id;
+                  alert(`Character "${character.name}" loaded successfully!`);
+                  document.getElementById('character-list-container').style.display = 'none';
+                })
+                .catch(error => {
+                  console.error('Error loading character:', error);
+                  alert('Error loading character. See console for details.');
+                });
+            });
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.className = 'add-button';
+            deleteButton.style.margin = '0 5px';
+            deleteButton.style.padding = '5px 10px';
+            deleteButton.style.fontSize = '0.8em';
+            deleteButton.style.backgroundColor = '#8b0000';
+            deleteButton.addEventListener('click', () => {
+              if (confirm(`Are you sure you want to delete "${character.name}"?`)) {
+                deleteCharacterFromDB(character.id)
+                  .then(() => {
+                    updateCharacterList();
+                    if (window.currentCharacterId === character.id) {
+                      window.currentCharacterId = null;
+                    }
+                    alert(`Character "${character.name}" deleted successfully!`);
+                  })
+                  .catch(error => {
+                    console.error('Error deleting character:', error);
+                    alert('Error deleting character. See console for details.');
+                  });
+              }
+            });
+            
+            buttonContainer.appendChild(loadButton);
+            buttonContainer.appendChild(deleteButton);
+            
+            listItem.appendChild(characterInfo);
+            listItem.appendChild(buttonContainer);
+            
+            listContainer.appendChild(listItem);
+          });
+        })
+        .catch(error => {
+          console.error('Error updating character list:', error);
+          listContainer.innerHTML = '<p>Error loading character list. See console for details.</p>';
+        });
+    }
+
     // Wait for DOM content to load
     window.addEventListener('DOMContentLoaded', function() {
+      // Initialize IndexedDB
+      initDB()
+        .then(() => {
+          console.log('Database initialized');
+          updateCharacterList();
+        })
+        .catch(error => {
+          console.error('Database initialization error:', error);
+          alert('Failed to initialize database. Local storage may not be available.');
+        });
       // Setup dice buttons
       document.querySelectorAll('.dice-button').forEach(function(button) {
         button.addEventListener('click', function() {
@@ -747,106 +1428,61 @@
         document.getElementById('weapons-list').appendChild(weaponRow);
       });
       
-      // Helper to get selected dice from a row
-      function getSelectedDice(rowId) {
-        const row = document.getElementById(rowId);
-        const selected = row.querySelector('.dice-button.selected');
-        return selected ? selected.textContent : null;
-      }
-      
-      // Save character data
+      // Save character to IndexedDB
       document.getElementById('save-btn').addEventListener('click', function() {
-        const character = {};
+        const character = collectCharacterData();
         
-        // Basic info
-        character.name = document.getElementById('name').value;
-        character.nickname = document.getElementById('nickname').value;
-        character.bennies = document.getElementById('bennies').value;
-        character.conviction = document.getElementById('conviction').value;
+        // Require a character name
+        if (!character.name) {
+          alert('Please enter a character name before saving.');
+          return;
+        }
         
-        // Attributes
-        character.attributes = {};
-        ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
-          character.attributes[attr] = getSelectedDice(attr + '-dice');
-        });
-        
-        // Derived stats
-        character.pace = document.getElementById('pace').value;
-        character.parry = document.getElementById('parry').value;
-        character.toughness = document.getElementById('toughness').value;
-        
-        // Skills
-        character.skills = {};
-        document.querySelectorAll('.section .skill-row').forEach(function(row) {
-          const diceButton = row.querySelector('.dice-button.selected');
-          if (!diceButton) return; // no selected dice found, skip
-          
-          const skillNameEl = row.querySelector('.skill-name');
-          let skillName = '';
-          
-          if (skillNameEl.tagName.toLowerCase() === 'div') {
-            // Default skills use a <div>
-            skillName = skillNameEl.textContent.trim();
-          } else {
-            // Custom skills use an <input>
-            skillName = skillNameEl.value.trim() || skillNameEl.placeholder.trim();
-          }
-          
-          character.skills[skillName] = diceButton.textContent;
-        });
-        
-        // Powers
-        character.powers = [];
-        document.querySelectorAll('.power-row').forEach(function(row) {
-          const inputs = row.querySelectorAll('input');
-          character.powers.push({
-            name: inputs[0].value,
-            pp: inputs[1].value,
-            range: inputs[2].value,
-            duration: inputs[3].value,
-            effect: inputs[4].value
+        saveCharacterToDB(character)
+          .then(id => {
+            window.currentCharacterId = id;
+            updateCharacterList();
+            alert(`Character "${character.name}" saved successfully!`);
+          })
+          .catch(error => {
+            console.error('Error saving character:', error);
+            alert('Error saving character. See console for details.');
           });
-        });
-        
-        // Gear
-        character.gear = [];
-        document.querySelectorAll('.gear-item input').forEach(function(input) {
-          character.gear.push(input.value);
-        });
-        
-        // Hindrances
-        character.hindrances = [];
-        document.querySelectorAll('.hindrance-item input').forEach(function(input) {
-          character.hindrances.push(input.value);
-        });
-        
-        // Edges
-        character.edges = [];
-        document.querySelectorAll('.edge-item input').forEach(function(input) {
-          character.edges.push(input.value);
-        });
-        
-        // Weapons
-        character.weapons = [];
-        document.querySelectorAll('.weapon-row').forEach(function(row) {
-          const inputs = row.querySelectorAll('input');
-          character.weapons.push({
-            name: inputs[0].value,
-            range: inputs[1].value,
-            damage: inputs[2].value,
-            ap: inputs[3].value,
-            rof: inputs[4].value,
-            wt: inputs[5].value,
-            notes: inputs[6].value
-          });
-        });
-        
-        // Output the JSON to the textarea
-        document.getElementById('characterData').value = JSON.stringify(character, null, 2);
       });
       
-      // Load character data
+      // New character button
+      document.getElementById('new-btn').addEventListener('click', function() {
+        if (window.currentCharacterId && !confirm('Are you sure you want to create a new character? Any unsaved changes will be lost.')) {
+          return;
+        }
+        resetCharacterSheet();
+      });
+      
+      // Load character button - shows the character list
       document.getElementById('load-btn').addEventListener('click', function() {
+        updateCharacterList();
+        document.getElementById('character-list-container').style.display = 'block';
+      });
+      
+      // Close character list
+      document.getElementById('close-character-list').addEventListener('click', function() {
+        document.getElementById('character-list-container').style.display = 'none';
+      });
+      
+      // Export character to JSON text
+      document.getElementById('export-btn').addEventListener('click', function() {
+        const character = collectCharacterData();
+        document.getElementById('characterData').value = JSON.stringify(character, null, 2);
+        document.getElementById('characterData').style.display = 'block';
+      });
+      
+      // Import character from JSON text
+      document.getElementById('import-btn').addEventListener('click', function() {
+        document.getElementById('characterData').style.display = 'block';
+        if (!document.getElementById('characterData').value) {
+          return;
+        }
+        
         let data;
         try {
           data = JSON.parse(document.getElementById('characterData').value);
@@ -855,6 +1491,16 @@
           return;
         }
         
+        // Clear any existing ID to ensure this is treated as a new character
+        delete data.id;
+        window.currentCharacterId = null;
+        
+        populateCharacterSheet(data);
+        document.getElementById('characterData').style.display = 'none';
+      });
+      
+      // Function to populate the character sheet
+      function populateCharacterSheet(data) {
         // Basic info
         document.getElementById('name').value = data.name || '';
         document.getElementById('nickname').value = data.nickname || '';
@@ -1054,6 +1700,145 @@
             document.getElementById('weapons-list').appendChild(weaponRow);
           });
         }
+        
+        // Wounds and Fatigue
+        if (data.wounds) {
+          document.querySelector(`input[name="wounds"][value="${data.wounds}"]`).checked = true;
+        }
+        if (data.fatigue) {
+          document.querySelector(`input[name="fatigue"][value="${data.fatigue}"]`).checked = true;
+        }
+      }
+      
+      // Save character to IndexedDB
+      document.getElementById('save-btn').addEventListener('click', function() {
+        const character = collectCharacterData();
+        
+        // Require a character name
+        if (!character.name) {
+          alert('Please enter a character name before saving.');
+          return;
+        }
+        
+        saveCharacterToDB(character)
+          .then(id => {
+            window.currentCharacterId = id;
+            updateCharacterList();
+            alert(`Character "${character.name}" saved successfully!`);
+          })
+          .catch(error => {
+            console.error('Error saving character:', error);
+            alert('Error saving character. See console for details.');
+          });
+      });
+      
+      // Function to reset the character sheet
+      function resetCharacterSheet() {
+        // Clear character name and other basic info
+        document.getElementById('name').value = '';
+        document.getElementById('nickname').value = '';
+        document.getElementById('bennies').value = '0';
+        document.getElementById('conviction').value = '0';
+        
+        // Reset all attributes to d4
+        ['agility', 'smarts', 'spirit', 'strength', 'vigor'].forEach(function(attr) {
+          const diceRow = document.getElementById(attr + '-dice');
+          if(diceRow) {
+            diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+              btn.classList.toggle('selected', btn.textContent === 'd4');
+            });
+          }
+        });
+        
+        // Reset derived stats
+        document.getElementById('pace').value = '6';
+        document.getElementById('parry').value = '2';
+        document.getElementById('toughness').value = '4';
+        
+        // Reset standard skills to d4
+        const standardSkills = ['athletics', 'common-knowledge', 'notice', 'persuasion', 'stealth'];
+        standardSkills.forEach(function(skill) {
+          const diceRow = document.getElementById(skill + '-dice');
+          if(diceRow) {
+            diceRow.querySelectorAll('.dice-button').forEach(function(btn) {
+              btn.classList.toggle('selected', btn.textContent === 'd4');
+            });
+          }
+        });
+        
+        // Clear custom skills
+        document.getElementById('custom-skills').innerHTML = '';
+        
+        // Clear powers
+        document.getElementById('powers-list').innerHTML = '';
+        
+        // Clear gear
+        document.getElementById('gear-list').innerHTML = '';
+        
+        // Clear hindrances
+        document.getElementById('hindrance-list').innerHTML = '';
+        
+        // Clear edges
+        document.getElementById('edge-list').innerHTML = '';
+        
+        // Clear weapons
+        document.getElementById('weapons-list').innerHTML = '';
+        
+        // Reset wounds and fatigue
+        document.querySelector('input[name="wounds"][value="0"]').checked = true;
+        document.querySelector('input[name="fatigue"][value="0"]').checked = true;
+        
+        // Reset current character ID
+        window.currentCharacterId = null;
+      }
+      
+      // New character button
+      document.getElementById('new-btn').addEventListener('click', function() {
+        if (window.currentCharacterId && !confirm('Are you sure you want to create a new character? Any unsaved changes will be lost.')) {
+          return;
+        }
+        resetCharacterSheet();
+      });
+      
+      // Load character button - shows the character list
+      document.getElementById('load-btn').addEventListener('click', function() {
+        updateCharacterList();
+        document.getElementById('character-list-container').style.display = 'block';
+      });
+      
+      // Close character list
+      document.getElementById('close-character-list').addEventListener('click', function() {
+        document.getElementById('character-list-container').style.display = 'none';
+      });
+      
+      // Export character to JSON text
+      document.getElementById('export-btn').addEventListener('click', function() {
+        const character = collectCharacterData();
+        document.getElementById('characterData').value = JSON.stringify(character, null, 2);
+        document.getElementById('characterData').style.display = 'block';
+      });
+      
+      // Import character from JSON text
+      document.getElementById('import-btn').addEventListener('click', function() {
+        document.getElementById('characterData').style.display = 'block';
+        if (!document.getElementById('characterData').value) {
+          return;
+        }
+        
+        let data;
+        try {
+          data = JSON.parse(document.getElementById('characterData').value);
+        } catch(e) {
+          alert('Invalid character data');
+          return;
+        }
+        
+        // Clear any existing ID to ensure this is treated as a new character
+        delete data.id;
+        window.currentCharacterId = null;
+        
+        populateCharacterSheet(data);
+        document.getElementById('characterData').style.display = 'none';
       });
     });
   </script>
