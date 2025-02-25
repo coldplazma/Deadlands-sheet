@@ -167,10 +167,6 @@
       width: 120px;
     }
     
-    .skill-dice {
-      display: flex;
-    }
-    
     .gear-list, .hindrance-list, .edge-list {
       min-height: 100px;
     }
@@ -180,16 +176,16 @@
     }
     
     .power-row {
-  display: grid;
-  /* Adjust column widths as you like: */
-  grid-template-columns: 1fr 50px 60px 60px 1fr;
-  gap: 5px;
-}
+      display: grid;
+      /* Adjust column widths as you like: */
+      grid-template-columns: 1fr 50px 60px 60px 1fr;
+      gap: 5px;
+    }
 
-.power-row input[type="text"] {
-  width: 100%;
-  box-sizing: border-box;
-}
+    .power-row input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
     
     .power-header {
       display: grid;
@@ -200,20 +196,19 @@
     }
     
     .weapon-header, .weapon-row {
-  display: grid;
-  /* Match these columns to your placeholders: */
-  grid-template-columns: 
-    1fr    /* WEAPON */
-    80px   /* RANGE */
-    100px  /* DAMAGE */
-    40px   /* AP */
-    60px   /* ROF */
-    60px   /* WT */
-    1fr;   /* NOTES */
-
-  gap: 5px;
-  align-items: center;
-}
+      display: grid;
+      /* Match these columns to your placeholders: */
+      grid-template-columns: 
+        1fr    /* WEAPON */
+        80px   /* RANGE */
+        100px  /* DAMAGE */
+        40px   /* AP */
+        60px   /* ROF */
+        60px   /* WT */
+        1fr;   /* NOTES */
+      gap: 5px;
+      align-items: center;
+    }
     
     input[type="text"], input[type="number"] {
       padding: 5px;
@@ -388,6 +383,7 @@
         <div class="section">
           <div class="section-title">SKILLS</div>
           
+          <!-- Default skills as DIVs -->
           <div class="skill-row">
             <div class="skill-name">Athletics</div>
             <div class="dice-row" id="athletics-dice">
@@ -444,7 +440,7 @@
           </div>
           
           <div id="custom-skills">
-            <!-- Custom skills will be added here -->
+            <!-- Custom skills will be added here as <input> elements -->
           </div>
           
           <button class="add-button" id="add-skill-btn">Add Skill</button>
@@ -601,7 +597,7 @@
         });
       });
       
-      // Add skill button functionality
+      // Add skill button functionality (custom skills)
       document.getElementById('add-skill-btn').addEventListener('click', function() {
         const skillRow = document.createElement('div');
         skillRow.className = 'skill-row';
@@ -751,14 +747,14 @@
         document.getElementById('weapons-list').appendChild(weaponRow);
       });
       
-      // Complete the getSelectedDice function
+      // Helper to get selected dice from a row
       function getSelectedDice(rowId) {
         const row = document.getElementById(rowId);
         const selected = row.querySelector('.dice-button.selected');
         return selected ? selected.textContent : null;
       }
       
-      // Save character data functionality
+      // Save character data
       document.getElementById('save-btn').addEventListener('click', function() {
         const character = {};
         
@@ -782,10 +778,21 @@
         // Skills
         character.skills = {};
         document.querySelectorAll('.section .skill-row').forEach(function(row) {
-          const skillInput = row.querySelector('.skill-name');
-          const dice = row.querySelector('.dice-button.selected').textContent;
-          const skillName = skillInput.value || skillInput.placeholder;
-          character.skills[skillName] = dice;
+          const diceButton = row.querySelector('.dice-button.selected');
+          if (!diceButton) return; // no selected dice found, skip
+          
+          const skillNameEl = row.querySelector('.skill-name');
+          let skillName = '';
+          
+          if (skillNameEl.tagName.toLowerCase() === 'div') {
+            // Default skills use a <div>
+            skillName = skillNameEl.textContent.trim();
+          } else {
+            // Custom skills use an <input>
+            skillName = skillNameEl.value.trim() || skillNameEl.placeholder.trim();
+          }
+          
+          character.skills[skillName] = diceButton.textContent;
         });
         
         // Powers
@@ -834,10 +841,11 @@
           });
         });
         
+        // Output the JSON to the textarea
         document.getElementById('characterData').value = JSON.stringify(character, null, 2);
       });
       
-      // Load character data functionality
+      // Load character data
       document.getElementById('load-btn').addEventListener('click', function() {
         let data;
         try {
@@ -850,7 +858,7 @@
         // Basic info
         document.getElementById('name').value = data.name || '';
         document.getElementById('nickname').value = data.nickname || '';
-        document.getElementById('bennies').value = data.bennies || 3;
+        document.getElementById('bennies').value = data.bennies || 0;
         document.getElementById('conviction').value = data.conviction || 0;
         
         // Attributes
@@ -874,9 +882,11 @@
         // Reset custom skills
         document.getElementById('custom-skills').innerHTML = '';
         const standardSkills = ['Athletics', 'Common Knowledge', 'Notice', 'Persuasion', 'Stealth'];
+        
         if(data.skills) {
           Object.keys(data.skills).forEach(function(skill) {
             if(standardSkills.includes(skill)) {
+              // If it's a default skill, find its dice row by ID
               const rowId = skill.toLowerCase().replace(' ', '-') + '-dice';
               const diceRow = document.getElementById(rowId);
               if(diceRow) {
@@ -885,15 +895,18 @@
                 });
               }
             } else {
-              // Add custom skill
+              // Otherwise, create a custom skill row
               const skillRow = document.createElement('div');
               skillRow.className = 'skill-row';
+              
               const nameInput = document.createElement('input');
               nameInput.type = 'text';
               nameInput.className = 'skill-name';
               nameInput.value = skill;
+              
               const diceContainer = document.createElement('div');
               diceContainer.className = 'dice-row';
+              
               ['d4','d6','d8','d10','d12'].forEach(function(dice) {
                 const diceBtn = document.createElement('div');
                 diceBtn.className = dice === data.skills[skill] ? 'dice-button selected' : 'dice-button';
@@ -906,6 +919,7 @@
                 });
                 diceContainer.appendChild(diceBtn);
               });
+              
               skillRow.appendChild(nameInput);
               skillRow.appendChild(diceContainer);
               document.getElementById('custom-skills').appendChild(skillRow);
