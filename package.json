@@ -1,0 +1,16 @@
+{
+  "name": "deadlands-sheet",
+  "version": "1.0.0",
+  "description": "[Link to hosted character sheet](https://coldplazma.github.io/Deadlands-sheet/deadlands-character-sheet.html)",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}
